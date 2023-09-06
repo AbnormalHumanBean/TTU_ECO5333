@@ -1,0 +1,126 @@
+---
+title: "Gravity Model Part 1"
+author: "Ivanna Tindle"
+date: "`r Sys.Date()`"
+output: pdf_document
+always_allow_html: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(purrr)
+library(readxl)
+library(tidyverse)
+library(ggplot2)
+library(rlist)
+library(rmarkdown)
+
+#Set-up
+```
+
+## Coding assignment: Gravity Model
+
+## **Data Retrieval:**
+
+**Variables:**
+
+$X_{ij}$ - exports between country i and country j for all i and j.
+
+$GDP_i$ - real GDP in purchasing power equivalent \$PPE dollars for all i.
+
+$d_{ij}$ - a distance proxy between countries i and j for all i and j.
+
+**Data:**
+
+GDP: US \$, constant prices, constant PPPs, reference year 2015, for 2021
+
+Link: <https://stats.oecd.org//Index.aspx?QueryId=126176>
+
+Exports -- Trade in value by partner countries (Edition 2022)
+
+Link: <https://www.oecd-ilibrary.org/trade/data/oecd-quarterly-international-trade-statistics/trade-in-value-by-partner-countries-edition-2022_3928be98-en>
+
+Distance -- Distance between country i's and j's capital using GeoDist database.
+
+Link: <http://www.cepii.fr/CEPII/en/bdd_modele/bdd_modele_item.asp?id=6>
+
+All files downloaded to same folder.
+
+## Load Data
+
+```{r}
+# Change working directory as needed.
+setwd("~/R/Gravity")
+
+#May need to change file names here due to saved file name
+
+GDP <- read_csv("SNA_TABLE_GDP_2021.csv", 
+    col_types = cols(Year = col_number(), 
+        Value = col_number()))
+
+export <- read_csv("QITS-2022-1-EN-20230503T012136.csv", show_col_types = FALSE)
+
+dist_ij <- read_excel("dist_cepii.xls")
+
+```
+
+Data Cleaning
+
+```{r}
+# Removing unnecessary variables
+
+GDP <- GDP %>% select(LOCATION,Value) %>%
+  rename(GDP = Value) 
+
+export <- export %>% 
+  filter(FLOW=="EXP") %>%
+  filter(TIME==2021) %>%
+  select(LOCATION, PARTNER, Value) %>% 
+  rename(Exports = Value)
+
+
+dist_ij <- dist_ij %>% 
+  select(iso_o, iso_d, dist) %>%
+  rename(LOCATION = iso_o,
+         PARTNER = iso_d)
+
+# Creating a copy of GDP for merging. 
+GDP2 <- GDP %>% 
+  rename(
+  PARTNER=LOCATION,
+  GDPj=GDP)
+
+```
+
+## Creating Data Set
+
+```{r}
+Data <- merge(dist_ij,export,by=c("LOCATION","PARTNER")) %>% 
+  merge(GDP, by="LOCATION") %>% 
+  rename(GDPi = GDP) %>% 
+  merge(GDP2, by= "PARTNER") %>% 
+  relocate(Country_i = LOCATION) %>% 
+  relocate(GDPi, .after = Country_i) %>% 
+  relocate(Country_j = PARTNER, .after = GDPi) %>% 
+  relocate(GDPj, .after = Country_j)
+
+Data <- Data %>% arrange(Country_i)
+
+head(Data)
+
+```
+
+## Reshaping Data Set
+
+```{r}
+# In my best understanding, pivot_wider or pivot_longer is the equivalent to Matlab's reshape command. 
+
+Data_wide <- Data %>%
+ pivot_wider(
+  names_from = Country_j,
+  values_from = c(GDPj,dist,Exports),
+  names_sep = "_"
+)
+head(Data_wide)
+summary(Data_wide)
+```
