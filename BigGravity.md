@@ -476,7 +476,9 @@ print(CI)
 
 $$
 \log x_{ij}= \beta_{1i} \log y_i + \beta_{1j}\log y_j + \beta_{2ij}\log d_{ij} + \beta_{3ij} \delta_{ij}+ \gamma_i  +\gamma_j
-$$ (I think)
+$$
+
+(I think)
 
 ### New Variables
 
